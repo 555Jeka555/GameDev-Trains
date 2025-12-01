@@ -1,37 +1,49 @@
 {
   "id": "Tutorial01",
-  "planningTime": 10.0,
+  "planningTime": 15.0,
   "simulationSpeed": 1.0,
-  "goalNodeId": "D",
+  "goalNodeId": "FINISH",
   "nodes": [
-    { "id": "A", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
-    { "id": "B", "gridPosition": { "x": 1, "y": 0 }, "type": "Generic" },
-    { "id": "C", "gridPosition": { "x": 2, "y": 0 }, "type": "Generic" },
-    { "id": "D", "gridPosition": { "x": 3, "y": 0 }, "type": "Finish" },
-    { "id": "E", "gridPosition": { "x": 1, "y": -1 }, "type": "Generic" },
-    { "id": "F", "gridPosition": { "x": 2, "y": 1 }, "type": "Generic" }
+    { "id": "START", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
+    { "id": "A1", "gridPosition": { "x": 4, "y": -4 }, "type": "Generic" },
+    { "id": "A2", "gridPosition": { "x": 8, "y": -8 }, "type": "Generic" },
+    { "id": "A3", "gridPosition": { "x": 12, "y": -12 }, "type": "Generic" },
+    { "id": "FINISH", "gridPosition": { "x": 16, "y": -16 }, "type": "Finish" },
+    { "id": "B1", "gridPosition": { "x": 4, "y": 4 }, "type": "Generic" },
+    { "id": "B2", "gridPosition": { "x": 8, "y": 0 }, "type": "Generic" },
+    { "id": "C1", "gridPosition": { "x": 8, "y": -16 }, "type": "Generic" },
+    { "id": "C2", "gridPosition": { "x": 12, "y": -20 }, "type": "Generic" }
   ],
   "edges": [
-    { "id": "AB", "fromNodeId": "A", "toNodeId": "B", "lengthMultiplier": 1.0 },
-    { "id": "BC", "fromNodeId": "B", "toNodeId": "C", "lengthMultiplier": 1.0 },
-    { "id": "CD", "fromNodeId": "C", "toNodeId": "D", "lengthMultiplier": 1.0 },
-    { "id": "BE", "fromNodeId": "B", "toNodeId": "E", "lengthMultiplier": 1.0 },
-    { "id": "EC", "fromNodeId": "E", "toNodeId": "C", "lengthMultiplier": 1.0 },
-    { "id": "CF", "fromNodeId": "C", "toNodeId": "F", "lengthMultiplier": 1.0 },
-    { "id": "FD", "fromNodeId": "F", "toNodeId": "D", "lengthMultiplier": 1.0 }
+    { "id": "START_A1", "fromNodeId": "START", "toNodeId": "A1", "lengthMultiplier": 1.0 },
+    { "id": "A1_A2", "fromNodeId": "A1", "toNodeId": "A2", "lengthMultiplier": 1.0 },
+    { "id": "A2_A3", "fromNodeId": "A2", "toNodeId": "A3", "lengthMultiplier": 1.0 },
+    { "id": "A3_FINISH", "fromNodeId": "A3", "toNodeId": "FINISH", "lengthMultiplier": 1.0 },
+    
+    { "id": "A1_B1", "fromNodeId": "A1", "toNodeId": "B1", "lengthMultiplier": 1.0 },
+    { "id": "B1_B2", "fromNodeId": "B1", "toNodeId": "B2", "lengthMultiplier": 1.0 },
+    { "id": "B2_A2", "fromNodeId": "B2", "toNodeId": "A2", "lengthMultiplier": 1.0 },
+    
+    { "id": "A2_C1", "fromNodeId": "A2", "toNodeId": "C1", "lengthMultiplier": 1.0 },
+    { "id": "C1_C2", "fromNodeId": "C1", "toNodeId": "C2", "lengthMultiplier": 1.0 },
+    { "id": "C2_A3", "fromNodeId": "C2", "toNodeId": "A3", "lengthMultiplier": 1.0 }
   ],
   "switches": [
-    { "nodeId": "B", "neighborCycle": ["C", "E"], "initialIndex": 0 },
-    { "nodeId": "C", "neighborCycle": ["D", "F"], "initialIndex": 0 }
+    { "nodeId": "A1", "neighborCycle": ["A2", "B1"], "initialIndex": 0 },
+    { "nodeId": "A2", "neighborCycle": ["A3", "C1", "B2", "A1"], "initialIndex": 0 },
+    { "nodeId": "A3", "neighborCycle": ["FINISH", "C2", "A2"], "initialIndex": 0 },
+    { "nodeId": "B1", "neighborCycle": ["A1", "B2"], "initialIndex": 0 },
+    { "nodeId": "B2", "neighborCycle": ["B1", "A2"], "initialIndex": 0 },
+    { "nodeId": "C1", "neighborCycle": ["A2", "C2"], "initialIndex": 0 },
+    { "nodeId": "C2", "neighborCycle": ["C1", "A3"], "initialIndex": 0 }
   ],
   "trains": [
     {
       "id": "Passenger",
       "kind": "Passenger",
-      "startNodeId": "A",
-      "initialNextNodeId": "B",
-      "metersPerSecond": 2.0
+      "startNodeId": "START",
+      "initialNextNodeId": "A1",
+      "metersPerSecond": 2.5
     }
   ]
 }
-

@@ -11,14 +11,27 @@ namespace RailSim.InputSystem
 
         public event Action<Vector2> TapPerformed;
         public event Action<Vector2> PanDelta;
+        public event Action<float> PinchDelta;
 
         private bool _pointerActive;
         private Vector2 _startPosition;
         private float _startTime;
         private Vector2 _lastPosition;
+        private float _lastPinchDistance;
+        private bool _isPinching;
 
         private void Update()
         {
+            // Handle pinch zoom on touch
+            if (HandlePinchZoom())
+            {
+                _pointerActive = false;
+                return;
+            }
+
+            // Handle mouse scroll wheel for zoom
+            HandleMouseScroll();
+
             if (TryGetPointer(out var position, out var phase))
             {
                 switch (phase)
@@ -51,6 +64,73 @@ namespace RailSim.InputSystem
             else
             {
                 _pointerActive = false;
+            }
+        }
+
+        private bool HandlePinchZoom()
+        {
+            var touchScreen = Touchscreen.current;
+            if (touchScreen == null)
+            {
+                _isPinching = false;
+                return false;
+            }
+
+            var touches = touchScreen.touches;
+            var activeCount = 0;
+            var touch0Pos = Vector2.zero;
+            var touch1Pos = Vector2.zero;
+
+            for (var i = 0; i < touches.Count && activeCount < 2; i++)
+            {
+                var touch = touches[i];
+                if (touch.press.isPressed)
+                {
+                    if (activeCount == 0)
+                        touch0Pos = touch.position.ReadValue();
+                    else
+                        touch1Pos = touch.position.ReadValue();
+                    activeCount++;
+                }
+            }
+
+            if (activeCount < 2)
+            {
+                _isPinching = false;
+                return false;
+            }
+
+            var currentDistance = Vector2.Distance(touch0Pos, touch1Pos);
+
+            if (!_isPinching)
+            {
+                _isPinching = true;
+                _lastPinchDistance = currentDistance;
+                return true;
+            }
+
+            var pinchDelta = currentDistance - _lastPinchDistance;
+            if (Mathf.Abs(pinchDelta) > 1f)
+            {
+                PinchDelta?.Invoke(pinchDelta);
+                _lastPinchDistance = currentDistance;
+            }
+
+            return true;
+        }
+
+        private void HandleMouseScroll()
+        {
+            var mouse = Mouse.current;
+            if (mouse == null)
+            {
+                return;
+            }
+
+            var scroll = mouse.scroll.ReadValue().y;
+            if (Mathf.Abs(scroll) > 0.1f)
+            {
+                PinchDelta?.Invoke(scroll);
             }
         }
 

@@ -16,7 +16,7 @@ namespace RailSim.Gameplay
         [SerializeField] private float trackWidth = 0.22f;
         [SerializeField] private float switchVisualSize = 0.55f;
         [SerializeField] private float switchTapRadius = 0.8f;
-        [SerializeField] private float goalMarkerSize = 1.8f;
+        [SerializeField] private float goalMarkerSize = 0.6f;
         [SerializeField] private float finishProximityRadius = 0.6f;
         [SerializeField] private float maxRunDuration = 30f;
 
@@ -150,7 +150,6 @@ namespace RailSim.Gameplay
             _graph = new RailGraph();
             foreach (var node in blueprint.nodes)
             {
-                Debug.Log($"Loading node {node.id} with type={node.type} -> {node.GetNodeType()}");
                 _graph.AddNode(node);
             }
 
@@ -253,13 +252,11 @@ namespace RailSim.Gameplay
 
             foreach (var node in _graph.Nodes.Values)
             {
-                Debug.Log($"Node {node.Id} has type {node.Type}");
                 if (node.Type != NodeType.Finish)
                 {
                     continue;
                 }
 
-                Debug.Log($"Creating FinishView for node {node.Id} at {node.WorldPosition}");
                 var go = new GameObject($"Finish_{node.Id}");
                 go.transform.SetParent(_markerRoot, false);
                 go.transform.position = node.WorldPosition + new Vector3(0f, 0.05f, 0f);
@@ -276,6 +273,18 @@ namespace RailSim.Gameplay
             else
             {
                 _hud?.SetFinishTarget(null);
+            }
+
+            // Set camera bounds based on all nodes
+            if (_cameraPan != null && _graph.Nodes.Count > 0)
+            {
+                var positions = new Vector3[_graph.Nodes.Count];
+                var i = 0;
+                foreach (var node in _graph.Nodes.Values)
+                {
+                    positions[i++] = node.WorldPosition;
+                }
+                _cameraPan.SetBoundsFromNodes(positions);
             }
         }
 
