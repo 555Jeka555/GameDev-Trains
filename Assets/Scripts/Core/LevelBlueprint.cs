@@ -14,6 +14,7 @@ namespace RailSim.Core
         public EdgeBlueprint[] edges = Array.Empty<EdgeBlueprint>();
         public SwitchBlueprint[] switches = Array.Empty<SwitchBlueprint>();
         public TrainBlueprint[] trains = Array.Empty<TrainBlueprint>();
+        public BonusBlueprint[] bonuses = Array.Empty<BonusBlueprint>();
     }
 
     [Serializable]
@@ -41,6 +42,19 @@ namespace RailSim.Core
         public string fromNodeId;
         public string toNodeId;
         public float lengthMultiplier = 1f;
+        public bool oneTimeUse = false;  // Path breaks after first use
+        public bool isOneWay = false;    // Can only travel in from->to direction
+        public int elevation = 0;         // Track height level (for bridges/tunnels)
+        public SerializableVector2[] controlPoints;  // Bezier control points (optional)
+    }
+
+    [Serializable]
+    public class BonusBlueprint
+    {
+        public string id;
+        public string edgeId;        // Which edge the bonus is on
+        public float positionOnEdge = 0.5f;  // 0-1 position along edge
+        public int starValue = 1;    // How many bonus stars
     }
 
     [Serializable]
@@ -59,6 +73,7 @@ namespace RailSim.Core
         public string startNodeId;
         public string initialNextNodeId;
         public float metersPerSecond = 2f;
+        public string colorHex = "";  // Custom color in hex format (e.g., "FF5500")
     }
 
     [Serializable]

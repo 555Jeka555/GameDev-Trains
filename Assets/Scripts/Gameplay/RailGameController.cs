@@ -10,8 +10,10 @@ namespace RailSim.Gameplay
     {
         [SerializeField] private LevelDefinition[] levelDefinitions =
         {
-            new LevelDefinition { displayName = "Туториал", resourcePath = "Levels/tutorial", planningTime = 10f },
-            new LevelDefinition { displayName = "Мега-хаб", resourcePath = "Levels/mega_hub", planningTime = 10f }
+            new LevelDefinition { displayName = "Туториал", resourcePath = "Levels/tutorial", planningTime = 15f, levelIndex = 0, threeStarTime = 8f, twoStarTime = 12f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Развилка", resourcePath = "Levels/level_02", planningTime = 12f, levelIndex = 1, threeStarTime = 10f, twoStarTime = 15f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Мега-хаб", resourcePath = "Levels/mega_hub", planningTime = 10f, levelIndex = 2, threeStarTime = 15f, twoStarTime = 25f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Эстакада", resourcePath = "Levels/level_04", planningTime = 20f, levelIndex = 3, threeStarTime = 12f, twoStarTime = 20f, randomizeSwitches = true }
         };
         [SerializeField] private float trackWidth = 0.22f;
         [SerializeField] private float switchVisualSize = 0.55f;
@@ -46,12 +48,15 @@ namespace RailSim.Gameplay
         private int _trainsTotal;
         private readonly List<FinishView> _finishViews = new();
         private readonly List<RailNode> _finishNodes = new();
+        private readonly List<BonusView> _bonusViews = new();
         private bool _timeoutTriggered;
+        private int _collectedBonusStars;
 
         private void Awake()
         {
             SetupCamera();
             CreateSceneRoots();
+            CreateBackground();
             _gestureInput = gameObject.AddComponent<GestureInput>();
             _gestureInput.TapPerformed += HandleTap;
 
@@ -67,6 +72,11 @@ namespace RailSim.Gameplay
             _menu = GameMenu.Create(Camera.main, this, levelDefinitions.Length > 0 ? levelDefinitions[0].displayName : "Уровень");
             _menu.SetLevelDefinitions(levelDefinitions);
             _menu.ShowMainMenu();
+        }
+
+        private void CreateBackground()
+        {
+            AnimatedBackground.Create();
         }
 
         private void Start() {}
@@ -145,6 +155,9 @@ namespace RailSim.Gameplay
             {
                 _simulation.TrainReachedGoal -= HandleTrainReachedGoal;
                 _simulation.CollisionDetected -= HandleCollision;
+                _simulation.DeadEndReached -= HandleDeadEnd;
+                _simulation.WrongSwitchEntry -= HandleWrongSwitchEntry;
+                _simulation.EdgeBroken -= HandleEdgeBroken;
             }
 
             _graph = new RailGraph();
@@ -159,16 +172,78 @@ namespace RailSim.Gameplay
             }
 
             var switches = new Dictionary<string, RailSwitchState>();
+            var shouldRandomize = _currentLevel?.randomizeSwitches ?? false;
+            
             foreach (var sw in blueprint.switches)
             {
-                switches[sw.nodeId] = new RailSwitchState(sw);
+                var state = new RailSwitchState(sw);
+                
+                // Randomize switch position if enabled
+                if (shouldRandomize && sw.neighborCycle != null && sw.neighborCycle.Length > 1)
+                {
+                    var randomTimes = Random.Range(0, sw.neighborCycle.Length);
+                    for (var i = 0; i < randomTimes; i++)
+                    {
+                        state.Toggle();
+                    }
+                }
+                
+                switches[sw.nodeId] = state;
             }
 
             _simulation = new RailSimulation(_graph, switches);
             _simulation.SpawnTrains(blueprint.trains);
+            _simulation.SpawnBonuses(blueprint.bonuses ?? System.Array.Empty<BonusBlueprint>());
             _simulation.TrainReachedGoal += HandleTrainReachedGoal;
             _simulation.CollisionDetected += HandleCollision;
+            _simulation.DeadEndReached += HandleDeadEnd;
+            _simulation.WrongSwitchEntry += HandleWrongSwitchEntry;
+            _simulation.EdgeBroken += HandleEdgeBroken;
+            _simulation.BonusCollected += HandleBonusCollected;
             _trainsTotal = _simulation.Trains.Count;
+            _collectedBonusStars = 0;
+        }
+        
+        private void HandleDeadEnd(TrainRuntime train)
+        {
+            _collisionOccurred = true;
+            _hud.UpdateStatus("ТУПИК!");
+        }
+
+        private void HandleWrongSwitchEntry(TrainRuntime train, RailNode node)
+        {
+            _collisionOccurred = true;
+            _hud.UpdateStatus("СХОД С РЕЛЬС!");
+            CreateExplosion(train.GetWorldPosition());
+        }
+
+        private void HandleEdgeBroken(RailEdge edge, Vector3 position)
+        {
+            // Find and update the track view
+            foreach (var trackView in _trackViews)
+            {
+                if (trackView.Edge == edge)
+                {
+                    trackView.MarkBroken();
+                    break;
+                }
+            }
+            
+            // Create explosion effect
+            CreateExplosion(position);
+        }
+
+        private void CreateExplosion(Vector3 position)
+        {
+            var explosionGo = new GameObject("Explosion");
+            explosionGo.transform.position = position;
+            explosionGo.AddComponent<ExplosionEffect>();
+        }
+
+        private void HandleBonusCollected(BonusRuntime bonus, TrainRuntime train)
+        {
+            _collectedBonusStars += bonus.StarValue;
+            _hud.UpdateStatus($"БОНУС! +{bonus.StarValue}⭐");
         }
 
         private void ClearVisuals()
@@ -200,7 +275,20 @@ namespace RailSim.Gameplay
             }
             _finishViews.Clear();
             _finishNodes.Clear();
+            
+            foreach (var bonus in _bonusViews)
+            {
+                if (bonus != null)
+                {
+                    Destroy(bonus.gameObject);
+                }
+            }
+            _bonusViews.Clear();
+            
             _hud?.SetFinishTarget(null);
+            
+            // Reset train color index
+            TrainView.ResetColorIndex();
         }
 
         private void BuildVisuals()
@@ -275,6 +363,16 @@ namespace RailSim.Gameplay
                 _hud?.SetFinishTarget(null);
             }
 
+            // Create bonus views
+            foreach (var bonus in _simulation.Bonuses)
+            {
+                var go = new GameObject($"Bonus_{bonus.Id}");
+                go.transform.SetParent(_markerRoot, false);
+                var view = go.AddComponent<BonusView>();
+                view.Initialize(bonus);
+                _bonusViews.Add(view);
+            }
+
             // Set camera bounds based on all nodes
             if (_cameraPan != null && _graph.Nodes.Count > 0)
             {
@@ -323,6 +421,10 @@ namespace RailSim.Gameplay
             {
                 _simulation.TrainReachedGoal -= HandleTrainReachedGoal;
                 _simulation.CollisionDetected -= HandleCollision;
+                _simulation.DeadEndReached -= HandleDeadEnd;
+                _simulation.WrongSwitchEntry -= HandleWrongSwitchEntry;
+                _simulation.EdgeBroken -= HandleEdgeBroken;
+                _simulation.BonusCollected -= HandleBonusCollected;
             }
             _simulation = null;
             _currentLevel = null;
@@ -529,8 +631,42 @@ namespace RailSim.Gameplay
             }
 
             _phase = GamePhase.Win;
-            _hud.UpdateStatus("ПОБЕДА!");
-            _menu.ShowRestartMenu("ПОБЕДА! ЖМИ РЕСТАРТ.");
+            
+            // Calculate stars based on completion time
+            var stars = 1;
+            if (_currentLevel != null)
+            {
+                stars = LevelProgress.CalculateStars(_runTimer, _currentLevel.threeStarTime, _currentLevel.twoStarTime);
+                LevelProgress.SetStars(_currentLevel.levelIndex, stars);
+            }
+            
+            var starText = new string('⭐', stars);
+            _hud.UpdateStatus($"ПОБЕДА! {starText}");
+            
+            // Find next level
+            LevelDefinition nextLevel = null;
+            if (_currentLevel != null)
+            {
+                var currentIndex = System.Array.FindIndex(levelDefinitions, l => l == _currentLevel);
+                if (currentIndex >= 0 && currentIndex < levelDefinitions.Length - 1)
+                {
+                    nextLevel = levelDefinitions[currentIndex + 1];
+                }
+            }
+            
+            _menu.ShowWinMenu(nextLevel, stars, _runTimer);
+        }
+
+        public void RequestNextLevel(LevelDefinition nextLevel)
+        {
+            if (nextLevel == null)
+            {
+                ReturnToMenu();
+                return;
+            }
+            
+            _phase = GamePhase.Boot;
+            LoadLevel(nextLevel);
         }
 
         private void HandleLose(string message)
@@ -561,6 +697,10 @@ namespace RailSim.Gameplay
             {
                 _simulation.TrainReachedGoal -= HandleTrainReachedGoal;
                 _simulation.CollisionDetected -= HandleCollision;
+                _simulation.DeadEndReached -= HandleDeadEnd;
+                _simulation.WrongSwitchEntry -= HandleWrongSwitchEntry;
+                _simulation.EdgeBroken -= HandleEdgeBroken;
+                _simulation.BonusCollected -= HandleBonusCollected;
             }
 
             if (_hud != null)
@@ -576,6 +716,10 @@ namespace RailSim.Gameplay
         public string displayName = "Уровень";
         public string resourcePath = "Levels/tutorial";
         public float planningTime = 10f;
+        public int levelIndex;
+        public float threeStarTime = 5f;  // Complete in this time for 3 stars
+        public float twoStarTime = 10f;   // Complete in this time for 2 stars
+        public bool randomizeSwitches = true;
     }
 
     public enum GamePhase
@@ -585,6 +729,75 @@ namespace RailSim.Gameplay
         Running,
         Win,
         Lose
+    }
+
+    public static class LevelProgress
+    {
+        private const string CompletedLevelsKey = "CompletedLevels";
+        private const string StarsKey = "LevelStars_";
+        private const string TotalStarsKey = "TotalStars";
+
+        public static bool IsLevelCompleted(int levelIndex)
+        {
+            return GetStars(levelIndex) > 0;
+        }
+
+        public static int GetStars(int levelIndex)
+        {
+            return PlayerPrefs.GetInt(StarsKey + levelIndex, 0);
+        }
+
+        public static void SetStars(int levelIndex, int stars)
+        {
+            var currentStars = GetStars(levelIndex);
+            if (stars > currentStars)
+            {
+                PlayerPrefs.SetInt(StarsKey + levelIndex, stars);
+                RecalculateTotalStars();
+                PlayerPrefs.Save();
+            }
+        }
+
+        public static int GetTotalStars()
+        {
+            return PlayerPrefs.GetInt(TotalStarsKey, 0);
+        }
+
+        private static void RecalculateTotalStars()
+        {
+            var total = 0;
+            for (var i = 0; i < 100; i++)
+            {
+                total += GetStars(i);
+            }
+            PlayerPrefs.SetInt(TotalStarsKey, total);
+        }
+
+        public static void MarkLevelCompleted(int levelIndex)
+        {
+            if (GetStars(levelIndex) == 0)
+            {
+                SetStars(levelIndex, 1);
+            }
+        }
+
+        public static int CalculateStars(float completionTime, float threeStarTime, float twoStarTime)
+        {
+            if (completionTime <= threeStarTime) return 3;
+            if (completionTime <= twoStarTime) return 2;
+            return 1;
+        }
+
+        public static void ResetProgress()
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                PlayerPrefs.DeleteKey(StarsKey + i);
+            }
+            PlayerPrefs.DeleteKey(TotalStarsKey);
+            PlayerPrefs.DeleteKey(CompletedLevelsKey);
+            PlayerPrefs.Save();
+        }
     }
 }
 

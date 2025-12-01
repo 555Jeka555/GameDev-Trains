@@ -82,38 +82,47 @@ namespace RailSim.Gameplay
 
         private void BuildFinishArrow()
         {
+            // Container for arrow elements
             var go = new GameObject("FinishArrow");
             go.transform.SetParent(transform, false);
             _arrowRect = go.AddComponent<RectTransform>();
-            _arrowRect.sizeDelta = new Vector2(50f, 100f);
-            _arrowImage = go.AddComponent<Image>();
-            _arrowImage.color = AccentColor;
-            _arrowImage.sprite = GetArrowSprite();
-            _arrowRect.pivot = new Vector2(0.5f, 0.2f);
-            _arrowRect.gameObject.SetActive(false);
+            _arrowRect.sizeDelta = new Vector2(80f, 80f);
+            _arrowRect.pivot = new Vector2(0.5f, 0.5f);
             
-            // Add glow effect
-            var outline = go.AddComponent<Outline>();
-            outline.effectColor = new Color(1f, 0.8f, 0.3f, 0.5f);
-            outline.effectDistance = new Vector2(4f, 4f);
-        }
-
-        private Sprite GetArrowSprite()
-        {
-            if (_arrowSprite != null)
-            {
-                return _arrowSprite;
-            }
-
-            var texture = Texture2D.whiteTexture;
-            _arrowSprite = Sprite.Create(
-                texture,
-                new Rect(0, 0, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f),
-                texture.width,
-                0,
-                SpriteMeshType.FullRect);
-            return _arrowSprite;
+            // Circle background
+            var circleBg = new GameObject("CircleBg");
+            circleBg.transform.SetParent(go.transform, false);
+            var circleRect = circleBg.AddComponent<RectTransform>();
+            circleRect.sizeDelta = new Vector2(70f, 70f);
+            var circleImage = circleBg.AddComponent<Image>();
+            circleImage.color = new Color(0.1f, 0.1f, 0.15f, 0.9f);
+            
+            // Flag emoji
+            var flagGo = new GameObject("Flag");
+            flagGo.transform.SetParent(go.transform, false);
+            var flagRect = flagGo.AddComponent<RectTransform>();
+            flagRect.sizeDelta = new Vector2(60f, 60f);
+            var flagText = flagGo.AddComponent<Text>();
+            flagText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            flagText.fontSize = 40;
+            flagText.alignment = TextAnchor.MiddleCenter;
+            flagText.text = "🏁";
+            
+            // Direction arrow (triangle indicator)
+            var arrowGo = new GameObject("Arrow");
+            arrowGo.transform.SetParent(go.transform, false);
+            var arrowObjRect = arrowGo.AddComponent<RectTransform>();
+            arrowObjRect.sizeDelta = new Vector2(20f, 20f);
+            arrowObjRect.anchoredPosition = new Vector2(0f, -45f);
+            _arrowImage = arrowGo.AddComponent<Image>();
+            _arrowImage.color = AccentColor;
+            
+            // Pulsing outline
+            var outline = circleImage.gameObject.AddComponent<Outline>();
+            outline.effectColor = AccentColor;
+            outline.effectDistance = new Vector2(3f, 3f);
+            
+            _arrowRect.gameObject.SetActive(false);
         }
 
         private Text CreateText(string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offset, int fontSize)
@@ -198,21 +207,36 @@ namespace RailSim.Gameplay
                 return;
             }
 
-            var onScreen = viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
-            var screenPoint = new Vector2(viewport.x * Screen.width, viewport.y * Screen.height);
+            // Check if flag is on screen with some margin
+            var margin = 0.1f;
+            var onScreen = viewport.x >= margin && viewport.x <= (1f - margin) && 
+                          viewport.y >= margin && viewport.y <= (1f - margin);
 
-            if (!onScreen)
+            // Hide arrow when flag is visible on screen
+            if (onScreen)
             {
-                viewport.x = Mathf.Clamp(viewport.x, 0.05f, 0.95f);
-                viewport.y = Mathf.Clamp(viewport.y, 0.05f, 0.95f);
-                screenPoint = new Vector2(viewport.x * Screen.width, viewport.y * Screen.height);
-                var direction = new Vector2(viewport.x - 0.5f, viewport.y - 0.5f);
-                var angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
-                _arrowRect.rotation = Quaternion.Euler(0f, 0f, angle);
+                _arrowRect.gameObject.SetActive(false);
+                return;
             }
-            else
+
+            // Position arrow at screen edge pointing towards finish
+            var edgeMargin = 0.08f;
+            var clampedX = Mathf.Clamp(viewport.x, edgeMargin, 1f - edgeMargin);
+            var clampedY = Mathf.Clamp(viewport.y, edgeMargin, 1f - edgeMargin);
+            var screenPoint = new Vector2(clampedX * Screen.width, clampedY * Screen.height);
+            
+            // Rotate arrow to point towards finish
+            var direction = new Vector2(viewport.x - 0.5f, viewport.y - 0.5f);
+            var angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
+            
+            // Rotate only the direction indicator, not the whole container
+            if (_arrowImage != null)
             {
-                _arrowRect.rotation = Quaternion.identity;
+                _arrowImage.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle + 90f);
+                _arrowImage.rectTransform.anchoredPosition = new Vector2(
+                    Mathf.Cos((angle + 90f) * Mathf.Deg2Rad) * 45f,
+                    Mathf.Sin((angle + 90f) * Mathf.Deg2Rad) * 45f
+                );
             }
 
             _arrowRect.position = screenPoint;

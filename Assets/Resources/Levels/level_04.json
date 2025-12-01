@@ -1,0 +1,167 @@
+{
+  "id": "Level04_Overpass",
+  "planningTime": 20.0,
+  "simulationSpeed": 1.0,
+  "goalNodeId": "FINISH",
+  "nodes": [
+    { "id": "START1", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
+    { "id": "START2", "gridPosition": { "x": 0, "y": -20 }, "type": "Start" },
+    { "id": "START3", "gridPosition": { "x": -10, "y": -10 }, "type": "Start" },
+    
+    { "id": "J1", "gridPosition": { "x": 8, "y": -8 }, "type": "Generic" },
+    { "id": "J2", "gridPosition": { "x": 16, "y": -16 }, "type": "Generic" },
+    { "id": "J3", "gridPosition": { "x": 24, "y": -24 }, "type": "Generic" },
+    
+    { "id": "BRIDGE_START", "gridPosition": { "x": 8, "y": -20 }, "type": "Generic" },
+    { "id": "BRIDGE_MID", "gridPosition": { "x": 16, "y": -12 }, "type": "Generic" },
+    { "id": "BRIDGE_END", "gridPosition": { "x": 24, "y": -8 }, "type": "Generic" },
+    
+    { "id": "LOOP_A", "gridPosition": { "x": 20, "y": 0 }, "type": "Generic" },
+    { "id": "LOOP_B", "gridPosition": { "x": 28, "y": -4 }, "type": "Generic" },
+    { "id": "LOOP_C", "gridPosition": { "x": 28, "y": -16 }, "type": "Generic" },
+    
+    { "id": "ONEWAY_START", "gridPosition": { "x": 12, "y": -28 }, "type": "Generic" },
+    { "id": "ONEWAY_END", "gridPosition": { "x": 20, "y": -28 }, "type": "Generic" },
+    
+    { "id": "FINISH", "gridPosition": { "x": 32, "y": -24 }, "type": "Finish" }
+  ],
+  "edges": [
+    { "id": "S1_J1", "fromNodeId": "START1", "toNodeId": "J1", "lengthMultiplier": 1.0 },
+    { 
+      "id": "S2_BRIDGE", 
+      "fromNodeId": "START2", 
+      "toNodeId": "BRIDGE_START", 
+      "lengthMultiplier": 1.0 
+    },
+    { "id": "S3_J1", "fromNodeId": "START3", "toNodeId": "J1", "lengthMultiplier": 1.2,
+      "controlPoints": [
+        { "x": -4, "y": -10 },
+        { "x": 2, "y": -9 }
+      ]
+    },
+    
+    { "id": "J1_J2", "fromNodeId": "J1", "toNodeId": "J2", "lengthMultiplier": 1.0 },
+    { "id": "J2_J3", "fromNodeId": "J2", "toNodeId": "J3", "lengthMultiplier": 1.0 },
+    { "id": "J3_FINISH", "fromNodeId": "J3", "toNodeId": "FINISH", "lengthMultiplier": 1.0 },
+    
+    { 
+      "id": "BRIDGE1", 
+      "fromNodeId": "BRIDGE_START", 
+      "toNodeId": "BRIDGE_MID", 
+      "lengthMultiplier": 1.3,
+      "elevation": 1,
+      "controlPoints": [
+        { "x": 10, "y": -18 },
+        { "x": 14, "y": -14 }
+      ]
+    },
+    { 
+      "id": "BRIDGE2", 
+      "fromNodeId": "BRIDGE_MID", 
+      "toNodeId": "BRIDGE_END", 
+      "lengthMultiplier": 1.3,
+      "elevation": 1,
+      "controlPoints": [
+        { "x": 18, "y": -10 },
+        { "x": 22, "y": -8 }
+      ]
+    },
+    { "id": "BRIDGE_TO_LOOP", "fromNodeId": "BRIDGE_END", "toNodeId": "LOOP_B", "lengthMultiplier": 1.0 },
+    
+    { 
+      "id": "J1_LOOP", 
+      "fromNodeId": "J1", 
+      "toNodeId": "LOOP_A", 
+      "lengthMultiplier": 1.2,
+      "controlPoints": [
+        { "x": 12, "y": -4 },
+        { "x": 16, "y": 0 }
+      ]
+    },
+    { "id": "LOOP_AB", "fromNodeId": "LOOP_A", "toNodeId": "LOOP_B", "lengthMultiplier": 1.0,
+      "isOneWay": true
+    },
+    { "id": "LOOP_BC", "fromNodeId": "LOOP_B", "toNodeId": "LOOP_C", "lengthMultiplier": 1.0,
+      "isOneWay": true
+    },
+    { "id": "LOOP_CJ3", "fromNodeId": "LOOP_C", "toNodeId": "J3", "lengthMultiplier": 1.0 },
+    
+    { "id": "BRIDGE_ONEWAY", "fromNodeId": "BRIDGE_START", "toNodeId": "ONEWAY_START", "lengthMultiplier": 1.0 },
+    { 
+      "id": "ONEWAY_PATH", 
+      "fromNodeId": "ONEWAY_START", 
+      "toNodeId": "ONEWAY_END", 
+      "lengthMultiplier": 1.0,
+      "oneTimeUse": true
+    },
+    { 
+      "id": "ONEWAY_TO_J3", 
+      "fromNodeId": "ONEWAY_END", 
+      "toNodeId": "J3", 
+      "lengthMultiplier": 1.2,
+      "oneTimeUse": true,
+      "controlPoints": [
+        { "x": 22, "y": -26 },
+        { "x": 24, "y": -25 }
+      ]
+    },
+    
+    { 
+      "id": "LOOP_A_BACK", 
+      "fromNodeId": "LOOP_A", 
+      "toNodeId": "J1", 
+      "lengthMultiplier": 1.2,
+      "isOneWay": true,
+      "controlPoints": [
+        { "x": 16, "y": -2 },
+        { "x": 12, "y": -6 }
+      ]
+    }
+  ],
+  "switches": [
+    { "nodeId": "J1", "neighborCycle": ["J2", "LOOP_A", "START1", "START3"], "initialIndex": 0 },
+    { "nodeId": "J2", "neighborCycle": ["J3", "J1"], "initialIndex": 0 },
+    { "nodeId": "J3", "neighborCycle": ["FINISH", "LOOP_C", "ONEWAY_END", "J2"], "initialIndex": 0 },
+    { "nodeId": "BRIDGE_START", "neighborCycle": ["BRIDGE_MID", "ONEWAY_START", "START2"], "initialIndex": 0 },
+    { "nodeId": "BRIDGE_MID", "neighborCycle": ["BRIDGE_END", "BRIDGE_START"], "initialIndex": 0 },
+    { "nodeId": "BRIDGE_END", "neighborCycle": ["LOOP_B", "BRIDGE_MID"], "initialIndex": 0 },
+    { "nodeId": "LOOP_A", "neighborCycle": ["LOOP_B", "J1"], "initialIndex": 0 },
+    { "nodeId": "LOOP_B", "neighborCycle": ["LOOP_C", "BRIDGE_END"], "initialIndex": 0 },
+    { "nodeId": "LOOP_C", "neighborCycle": ["J3", "LOOP_B"], "initialIndex": 0 },
+    { "nodeId": "ONEWAY_START", "neighborCycle": ["ONEWAY_END", "BRIDGE_START"], "initialIndex": 0 },
+    { "nodeId": "ONEWAY_END", "neighborCycle": ["J3", "ONEWAY_START"], "initialIndex": 0 }
+  ],
+  "trains": [
+    {
+      "id": "Express",
+      "kind": "Passenger",
+      "startNodeId": "START1",
+      "initialNextNodeId": "J1",
+      "metersPerSecond": 2.5,
+      "colorHex": "2196F3"
+    },
+    {
+      "id": "Cargo",
+      "kind": "Freight",
+      "startNodeId": "START2",
+      "initialNextNodeId": "BRIDGE_START",
+      "metersPerSecond": 1.8,
+      "colorHex": "FF5722"
+    },
+    {
+      "id": "Local",
+      "kind": "Passenger",
+      "startNodeId": "START3",
+      "initialNextNodeId": "J1",
+      "metersPerSecond": 2.0,
+      "colorHex": "4CAF50"
+    }
+  ],
+  "bonuses": [
+    { "id": "B1", "edgeId": "BRIDGE1", "positionOnEdge": 0.5, "starValue": 1 },
+    { "id": "B2", "edgeId": "BRIDGE2", "positionOnEdge": 0.5, "starValue": 1 },
+    { "id": "B3", "edgeId": "LOOP_AB", "positionOnEdge": 0.5, "starValue": 2 },
+    { "id": "B4", "edgeId": "ONEWAY_PATH", "positionOnEdge": 0.5, "starValue": 2 }
+  ]
+}
+

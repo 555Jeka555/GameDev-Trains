@@ -17,6 +17,13 @@ namespace RailSim.Gameplay
 
         public event Action<TrainRuntime, RailNode> TrainReachedGoal;
         public event Action<TrainRuntime, TrainRuntime> CollisionDetected;
+        public event Action<TrainRuntime> DeadEndReached;
+        public event Action<TrainRuntime, RailNode> WrongSwitchEntry;
+        public event Action<RailEdge, Vector3> EdgeBroken;
+        public event Action<BonusRuntime, TrainRuntime> BonusCollected;
+
+        private readonly List<BonusRuntime> _bonuses = new();
+        public IReadOnlyList<BonusRuntime> Bonuses => _bonuses;
 
         public RailSimulation(RailGraph graph, Dictionary<string, RailSwitchState> switches)
         {
@@ -74,6 +81,44 @@ namespace RailSim.Gameplay
             }
         }
 
+        public void SpawnBonuses(IEnumerable<Core.BonusBlueprint> blueprints)
+        {
+            _bonuses.Clear();
+            foreach (var blueprint in blueprints)
+            {
+                var edge = _graph.GetEdge(blueprint.edgeId);
+                if (edge == null)
+                {
+                    Debug.LogWarning($"Bonus {blueprint.id} references missing edge {blueprint.edgeId}");
+                    continue;
+                }
+                _bonuses.Add(new BonusRuntime(blueprint, edge));
+            }
+        }
+
+        private void CheckBonusCollection()
+        {
+            foreach (var bonus in _bonuses)
+            {
+                if (bonus.IsCollected) continue;
+
+                foreach (var train in _trains)
+                {
+                    if (train.HasFinished) continue;
+                    if (train.CurrentEdge != bonus.Edge) continue;
+
+                    var trainPos = train.GetWorldPosition();
+                    var distance = Vector3.Distance(trainPos, bonus.WorldPosition);
+                    
+                    if (distance < 0.5f)
+                    {
+                        bonus.Collect();
+                        BonusCollected?.Invoke(bonus, train);
+                    }
+                }
+            }
+        }
+
         public void Update(float deltaTime, string goalNodeId)
         {
             foreach (var train in _trains)
@@ -91,6 +136,7 @@ namespace RailSim.Gameplay
             }
 
             DetectCollisions();
+            CheckBonusCollection();
         }
 
         public void ForceCompleteTrain(TrainRuntime train, RailNode goalNodeOverride = null)
@@ -140,7 +186,22 @@ namespace RailSim.Gameplay
                 }
 
                 remainingDistance -= distanceLeftOnEdge;
-                train.ArriveAtNode(train.NextNode);
+                
+                var arrivedEdge = train.CurrentEdge;
+                var arrivalNode = train.NextNode;
+                var cameFromNode = train.PreviousNode;
+                
+                train.ArriveAtNode(arrivalNode);
+
+                // Check if this is a one-time-use edge and break it
+                if (arrivedEdge.OneTimeUse && !arrivedEdge.IsBroken)
+                {
+                    arrivedEdge.MarkBroken();
+                    var breakPos = arrivedEdge.IsCurved 
+                        ? arrivedEdge.GetPointAtT(0.5f) 
+                        : (arrivedEdge.A.WorldPosition + arrivedEdge.B.WorldPosition) * 0.5f;
+                    EdgeBroken?.Invoke(arrivedEdge, breakPos);
+                }
 
                 if (train.CurrentNode.Type == NodeType.Finish)
                 {
@@ -148,10 +209,40 @@ namespace RailSim.Gameplay
                     break;
                 }
 
+                // Check for wrong switch entry
+                if (_switches.TryGetValue(train.CurrentNode.Id, out var switchState))
+                {
+                    // The switch defines where to go NEXT, not where you can come FROM
+                    // A train entering from a "wrong" branch should derail if there's more than 2 neighbors
+                    // This simulates a real switch where you can only enter from the "heel" (main line)
+                    if (train.CurrentNode.Neighbors.Count > 2)
+                    {
+                        var currentTarget = switchState.CurrentTarget;
+                        // If the train came from a branch that is NOT the current target,
+                        // and there are multiple possible exits, it's a derailment
+                        if (!string.IsNullOrEmpty(currentTarget) && 
+                            cameFromNode != null &&
+                            cameFromNode.Id != currentTarget &&
+                            !IsMainLineEntry(train.CurrentNode, cameFromNode))
+                        {
+                            // Check if the entry direction conflicts with switch position
+                            var targetNode = _graph.GetNode(currentTarget);
+                            if (targetNode != null && targetNode != cameFromNode)
+                            {
+                                // The switch is pointing somewhere else, and we entered from a branch
+                                train.MarkFinished();
+                                WrongSwitchEntry?.Invoke(train, train.CurrentNode);
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 var nextNode = ResolveNextNode(train);
                 if (nextNode == null)
                 {
-                    train.MarkFinished(); // Dead end == failure -> treat as stop
+                    train.MarkFinished();
+                    DeadEndReached?.Invoke(train);
                     break;
                 }
 
@@ -159,11 +250,31 @@ namespace RailSim.Gameplay
                 if (edge == null)
                 {
                     train.MarkFinished();
+                    DeadEndReached?.Invoke(train);
+                    break;
+                }
+
+                // Check if the edge is broken
+                if (edge.IsBroken)
+                {
+                    train.MarkFinished();
+                    DeadEndReached?.Invoke(train);
                     break;
                 }
 
                 train.BeginEdge(nextNode, edge);
             }
+        }
+
+        /// <summary>
+        /// Determines if the entry node is a "main line" entry (typically has only 2 connections at that junction).
+        /// This is a simplified check - in a real scenario, you might want to configure this per switch.
+        /// </summary>
+        private static bool IsMainLineEntry(RailNode switchNode, RailNode entryNode)
+        {
+            // Count how many neighbors the entry node has
+            // If it's a simple through-line node, it's likely the main line
+            return entryNode.Neighbors.Count <= 2;
         }
 
         private RailNode ResolveNextNode(TrainRuntime train)
@@ -245,17 +356,33 @@ namespace RailSim.Gameplay
 
         private static bool IsCollision(TrainRuntime a, TrainRuntime b)
         {
-            if (a.CurrentEdge != null && a.CurrentEdge == b.CurrentEdge)
+            // Check if trains are on different elevation levels
+            var elevationA = a.CurrentEdge?.Elevation ?? 0;
+            var elevationB = b.CurrentEdge?.Elevation ?? 0;
+            if (elevationA != elevationB)
             {
-                return Mathf.Abs(a.DistanceAlongEdge - b.DistanceAlongEdge) < 0.1f;
+                return false; // Different elevations = no collision
             }
 
+            // Check same edge collision
+            if (a.CurrentEdge != null && a.CurrentEdge == b.CurrentEdge)
+            {
+                return Mathf.Abs(a.DistanceAlongEdge - b.DistanceAlongEdge) < 0.3f;
+            }
+
+            // Check same node collision
             if (a.CurrentNode != null && a.CurrentNode == b.CurrentNode)
             {
                 return true;
             }
 
-            return false;
+            // Check position-based collision using world positions
+            var posA = a.GetWorldPosition();
+            var posB = b.GetWorldPosition();
+            var distance = Vector3.Distance(posA, posB);
+            
+            const float collisionRadius = 0.5f;
+            return distance < collisionRadius;
         }
     }
 
@@ -315,11 +442,20 @@ namespace RailSim.Gameplay
                 return CurrentNode?.WorldPosition ?? Vector3.zero;
             }
 
-            var a = PreviousNode?.WorldPosition ?? CurrentEdge.A.WorldPosition;
-            var b = NextNode?.WorldPosition ?? CurrentEdge.B.WorldPosition;
             var t = Mathf.Approximately(CurrentEdge.WorldDistance, 0f)
                 ? 0f
                 : Mathf.Clamp01(DistanceAlongEdge / CurrentEdge.WorldDistance);
+
+            // Handle direction: are we going from A to B or B to A?
+            var goingForward = PreviousNode == CurrentEdge.A || NextNode == CurrentEdge.B;
+            
+            if (CurrentEdge.IsCurved)
+            {
+                return CurrentEdge.GetPointAtT(goingForward ? t : 1f - t);
+            }
+
+            var a = goingForward ? CurrentEdge.A.WorldPosition : CurrentEdge.B.WorldPosition;
+            var b = goingForward ? CurrentEdge.B.WorldPosition : CurrentEdge.A.WorldPosition;
             return Vector3.Lerp(a, b, t);
         }
 
@@ -327,8 +463,20 @@ namespace RailSim.Gameplay
         {
             if (CurrentEdge != null)
             {
-                var a = PreviousNode?.WorldPosition ?? CurrentEdge.A.WorldPosition;
-                var b = NextNode?.WorldPosition ?? CurrentEdge.B.WorldPosition;
+                var t = Mathf.Approximately(CurrentEdge.WorldDistance, 0f)
+                    ? 0f
+                    : Mathf.Clamp01(DistanceAlongEdge / CurrentEdge.WorldDistance);
+
+                var goingForward = PreviousNode == CurrentEdge.A || NextNode == CurrentEdge.B;
+
+                if (CurrentEdge.IsCurved)
+                {
+                    var dir = CurrentEdge.GetDirectionAtT(goingForward ? t : 1f - t);
+                    return goingForward ? dir : -dir;
+                }
+
+                var a = goingForward ? CurrentEdge.A.WorldPosition : CurrentEdge.B.WorldPosition;
+                var b = goingForward ? CurrentEdge.B.WorldPosition : CurrentEdge.A.WorldPosition;
                 return (b - a).normalized;
             }
 
@@ -347,6 +495,27 @@ namespace RailSim.Gameplay
 
             return Vector3.right;
         }
+    }
+
+    public class BonusRuntime
+    {
+        public string Id { get; }
+        public RailEdge Edge { get; }
+        public float PositionOnEdge { get; }
+        public int StarValue { get; }
+        public bool IsCollected { get; private set; }
+        public Vector3 WorldPosition { get; }
+
+        public BonusRuntime(Core.BonusBlueprint blueprint, RailEdge edge)
+        {
+            Id = blueprint.id;
+            Edge = edge;
+            PositionOnEdge = Mathf.Clamp01(blueprint.positionOnEdge);
+            StarValue = Mathf.Max(1, blueprint.starValue);
+            WorldPosition = edge.GetPointAtT(PositionOnEdge);
+        }
+
+        public void Collect() => IsCollected = true;
     }
 }
 

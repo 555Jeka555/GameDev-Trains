@@ -31,15 +31,35 @@ namespace RailSim.Gameplay
                 return;
             }
 
+            // Convert control points from grid to world coordinates
+            Vector3[] worldControlPoints = null;
+            if (blueprint.controlPoints != null && blueprint.controlPoints.Length > 0)
+            {
+                worldControlPoints = new Vector3[blueprint.controlPoints.Length];
+                for (var i = 0; i < blueprint.controlPoints.Length; i++)
+                {
+                    worldControlPoints[i] = IsometricMath.GridToWorld(blueprint.controlPoints[i].ToVector2(), 0f);
+                }
+            }
+
             var edge = new RailEdge(
                 blueprint.id,
                 from,
                 to,
-                Mathf.Max(0.1f, blueprint.lengthMultiplier));
+                Mathf.Max(0.1f, blueprint.lengthMultiplier),
+                blueprint.oneTimeUse,
+                blueprint.isOneWay,
+                blueprint.elevation,
+                worldControlPoints);
 
             _edges[edge.Id] = edge;
+            
+            // For one-way edges, only add neighbor in forward direction
             from.AddNeighbor(edge, to);
-            to.AddNeighbor(edge, from);
+            if (!blueprint.isOneWay)
+            {
+                to.AddNeighbor(edge, from);
+            }
         }
 
         public RailNode GetNode(string id) => _nodes.TryGetValue(id, out var node) ? node : null;
@@ -89,18 +109,116 @@ namespace RailSim.Gameplay
         public RailNode A { get; }
         public RailNode B { get; }
         public float LengthMultiplier { get; }
+        public bool OneTimeUse { get; }
+        public bool IsOneWay { get; }
+        public int Elevation { get; }
+        public bool IsBroken { get; private set; }
+        public Vector3[] ControlPoints { get; }
+        public bool IsCurved => ControlPoints != null && ControlPoints.Length > 0;
 
-        public RailEdge(string id, RailNode a, RailNode b, float lengthMultiplier)
+        private float _cachedLength = -1f;
+
+        public RailEdge(string id, RailNode a, RailNode b, float lengthMultiplier, 
+            bool oneTimeUse = false, bool isOneWay = false, int elevation = 0, Vector3[] controlPoints = null)
         {
             Id = id;
             A = a;
             B = b;
             LengthMultiplier = lengthMultiplier;
+            OneTimeUse = oneTimeUse;
+            IsOneWay = isOneWay;
+            Elevation = elevation;
+            ControlPoints = controlPoints;
         }
 
         public RailNode GetOtherNode(RailNode current) => current == A ? B : A;
 
-        public float WorldDistance => Vector3.Distance(A.WorldPosition, B.WorldPosition) * LengthMultiplier;
+        public float WorldDistance
+        {
+            get
+            {
+                if (_cachedLength < 0f)
+                {
+                    _cachedLength = CalculateLength() * LengthMultiplier;
+                }
+                return _cachedLength;
+            }
+        }
+
+        private float CalculateLength()
+        {
+            if (!IsCurved)
+            {
+                return Vector3.Distance(A.WorldPosition, B.WorldPosition);
+            }
+
+            // Approximate bezier length by sampling
+            const int samples = 20;
+            var length = 0f;
+            var prevPos = GetPointAtT(0f);
+            for (var i = 1; i <= samples; i++)
+            {
+                var t = (float)i / samples;
+                var pos = GetPointAtT(t);
+                length += Vector3.Distance(prevPos, pos);
+                prevPos = pos;
+            }
+            return length;
+        }
+
+        public Vector3 GetPointAtT(float t)
+        {
+            var start = A.WorldPosition;
+            var end = B.WorldPosition;
+
+            if (!IsCurved)
+            {
+                return Vector3.Lerp(start, end, t);
+            }
+
+            // Cubic bezier with control points
+            if (ControlPoints.Length >= 2)
+            {
+                return CubicBezier(start, ControlPoints[0], ControlPoints[1], end, t);
+            }
+            // Quadratic bezier with single control point
+            if (ControlPoints.Length == 1)
+            {
+                return QuadraticBezier(start, ControlPoints[0], end, t);
+            }
+
+            return Vector3.Lerp(start, end, t);
+        }
+
+        public Vector3 GetDirectionAtT(float t)
+        {
+            const float delta = 0.01f;
+            var t0 = Mathf.Max(0f, t - delta);
+            var t1 = Mathf.Min(1f, t + delta);
+            return (GetPointAtT(t1) - GetPointAtT(t0)).normalized;
+        }
+
+        private static Vector3 QuadraticBezier(Vector3 p0, Vector3 p1, Vector3 p2, float t)
+        {
+            var oneMinusT = 1f - t;
+            return oneMinusT * oneMinusT * p0 +
+                   2f * oneMinusT * t * p1 +
+                   t * t * p2;
+        }
+
+        private static Vector3 CubicBezier(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+        {
+            var oneMinusT = 1f - t;
+            return oneMinusT * oneMinusT * oneMinusT * p0 +
+                   3f * oneMinusT * oneMinusT * t * p1 +
+                   3f * oneMinusT * t * t * p2 +
+                   t * t * t * p3;
+        }
+
+        public void MarkBroken()
+        {
+            IsBroken = true;
+        }
     }
 
     public class RailSwitchState

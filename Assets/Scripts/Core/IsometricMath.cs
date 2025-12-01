@@ -4,6 +4,7 @@ namespace RailSim.Core
 {
     /// <summary>
     /// Utility helpers for projecting grid coordinates into isometric 2D space.
+    /// Rotated 90° left so tracks go bottom-to-top on mobile screens.
     /// </summary>
     public static class IsometricMath
     {
@@ -12,11 +13,19 @@ namespace RailSim.Core
 
         /// <summary>
         /// Converts an integer grid coordinate into a world-space position aligned with an isometric view.
+        /// Rotated 90° counter-clockwise for vertical mobile layout.
         /// </summary>
         public static Vector3 GridToWorld(Vector2 gridPosition, float z = 0f)
         {
-            var x = (gridPosition.x - gridPosition.y) * (TileWidth * 0.5f);
-            var y = (gridPosition.x + gridPosition.y) * (TileHeight * 0.5f);
+            // Original isometric: x = (gx - gy) * 0.5, y = (gx + gy) * 0.25
+            // Rotated 90° left: swap and negate to rotate counter-clockwise
+            var originalX = (gridPosition.x - gridPosition.y) * (TileWidth * 0.5f);
+            var originalY = (gridPosition.x + gridPosition.y) * (TileHeight * 0.5f);
+            
+            // Rotate 90° counter-clockwise: (x, y) -> (-y, x)
+            var x = -originalY;
+            var y = originalX;
+            
             return new Vector3(x, y, z);
         }
 
