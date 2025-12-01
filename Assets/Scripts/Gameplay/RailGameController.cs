@@ -10,10 +10,10 @@ namespace RailSim.Gameplay
     {
         [SerializeField] private LevelDefinition[] levelDefinitions =
         {
-            new LevelDefinition { displayName = "Туториал", resourcePath = "Levels/tutorial", planningTime = 15f, levelIndex = 0, threeStarTime = 8f, twoStarTime = 12f, randomizeSwitches = true },
-            new LevelDefinition { displayName = "Развилка", resourcePath = "Levels/level_02", planningTime = 12f, levelIndex = 1, threeStarTime = 10f, twoStarTime = 15f, randomizeSwitches = true },
-            new LevelDefinition { displayName = "Мега-хаб", resourcePath = "Levels/mega_hub", planningTime = 10f, levelIndex = 2, threeStarTime = 15f, twoStarTime = 25f, randomizeSwitches = true },
-            new LevelDefinition { displayName = "Эстакада", resourcePath = "Levels/level_04", planningTime = 20f, levelIndex = 3, threeStarTime = 12f, twoStarTime = 20f, randomizeSwitches = true }
+            new LevelDefinition { displayName = "Туториал", resourcePath = "Levels/tutorial", planningTime = 5f, levelIndex = 0, threeStarTime = 8f, twoStarTime = 12f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Развилка", resourcePath = "Levels/level_02", planningTime = 5f, levelIndex = 1, threeStarTime = 10f, twoStarTime = 15f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Мега-хаб", resourcePath = "Levels/mega_hub", planningTime = 5f, levelIndex = 2, threeStarTime = 15f, twoStarTime = 25f, randomizeSwitches = true },
+            new LevelDefinition { displayName = "Эстакада", resourcePath = "Levels/level_04", planningTime = 8f, levelIndex = 3, threeStarTime = 12f, twoStarTime = 20f, randomizeSwitches = true }
         };
         [SerializeField] private float trackWidth = 0.22f;
         [SerializeField] private float switchVisualSize = 0.55f;
@@ -51,6 +51,7 @@ namespace RailSim.Gameplay
         private readonly List<BonusView> _bonusViews = new();
         private bool _timeoutTriggered;
         private int _collectedBonusStars;
+        private float _statusClearTimer;
 
         private void Awake()
         {
@@ -94,6 +95,17 @@ namespace RailSim.Gameplay
             else if (_phase == GamePhase.Running)
             {
                 _runTimer += Time.deltaTime;
+                
+                // Clear status message after 2 seconds
+                if (_statusClearTimer > 0f)
+                {
+                    _statusClearTimer -= Time.deltaTime;
+                    if (_statusClearTimer <= 0f)
+                    {
+                        _hud.UpdateStatus("");
+                    }
+                }
+                
                 if (!_timeoutTriggered && _runTimer >= maxRunDuration)
                 {
                     _timeoutTriggered = true;
@@ -146,6 +158,13 @@ namespace RailSim.Gameplay
             _trainsTotal = _simulation?.Trains.Count ?? 0;
             _hud.UpdateStatus("ПЛАНИРУЙ");
             _timeoutTriggered = false;
+            
+            // Set star times for progress bar
+            if (_currentLevel != null)
+            {
+                _hud.SetStarTimes(_currentLevel.threeStarTime, _currentLevel.twoStarTime);
+            }
+            
             _menu?.Hide();
         }
 
@@ -404,6 +423,9 @@ namespace RailSim.Gameplay
 
         public void RequestRestart()
         {
+            // Reset phase to allow loading
+            _phase = GamePhase.Boot;
+            
             if (_currentLevel != null)
             {
                 LoadLevel(_currentLevel);
@@ -438,6 +460,7 @@ namespace RailSim.Gameplay
             _hud.UpdateStatus("МЕНЮ");
             _hud.UpdateTimer(0f, true);
             _hud.SetFinishTarget(null);
+            _hud.HideProgressBar();
             _menu.ShowMainMenu();
         }
 
@@ -470,7 +493,8 @@ namespace RailSim.Gameplay
 
             _phase = GamePhase.Running;
             _runTimer = 0f;
-            _hud.UpdateStatus("ПОЕЗДЫ В ПУТИ");
+            _hud.UpdateStatus("ПОЕЗДА В ПУТИ");
+            _statusClearTimer = 2f; // Clear status after 2 seconds
         }
 
         private bool TryToggleNearestSwitch(Vector2 worldPoint)

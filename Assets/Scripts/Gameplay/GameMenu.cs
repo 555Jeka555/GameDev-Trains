@@ -84,13 +84,13 @@ namespace RailSim.Gameplay
             var overlayImage = overlay.AddComponent<Image>();
             overlayImage.color = new Color(0f, 0f, 0f, 0.5f);
 
-            // Main panel with rounded corners effect
+            // Main panel with rounded corners effect - INCREASED SIZE
             var panel = new GameObject("Panel");
             panel.transform.SetParent(transform, false);
             var rect = panel.AddComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(750f, 850f);
+            rect.sizeDelta = new Vector2(800f, 1000f);
             rect.anchoredPosition = Vector2.zero;
 
             _panelImage = panel.AddComponent<Image>();
@@ -107,24 +107,27 @@ namespace RailSim.Gameplay
             var accentImage = accentLine.AddComponent<Image>();
             accentImage.color = AccentColor;
 
-            // Train icon/emoji
-            var iconText = CreateText(panel.transform, "Icon", 72, new Vector2(0, 340), TextAnchor.MiddleCenter);
+            // Train icon/emoji - MOVED HIGHER
+            var iconText = CreateText(panel.transform, "Icon", 72, new Vector2(0, 420), TextAnchor.MiddleCenter);
             iconText.text = "🚂";
 
-            _titleText = CreateText(panel.transform, "Title", 48, new Vector2(0, 260), TextAnchor.MiddleCenter);
+            _titleText = CreateText(panel.transform, "Title", 48, new Vector2(0, 340), TextAnchor.MiddleCenter);
             _titleText.text = "ПОЕЗДА";
             _titleText.color = AccentColor;
             _titleText.fontStyle = FontStyle.Bold;
 
-            _messageText = CreateText(panel.transform, "Message", 26, new Vector2(0, 190), TextAnchor.MiddleCenter);
+            // Message text ABOVE the level buttons
+            _messageText = CreateText(panel.transform, "Message", 22, new Vector2(0, 260), TextAnchor.MiddleCenter);
             _messageText.color = SubtextColor;
+            _messageText.GetComponent<RectTransform>().sizeDelta = new Vector2(700f, 80f);
 
+            // Level buttons container - positioned below message
             _levelButtonContainer = new GameObject("LevelButtons").AddComponent<RectTransform>();
             _levelButtonContainer.SetParent(panel.transform, false);
             _levelButtonContainer.anchorMin = new Vector2(0.5f, 0.5f);
             _levelButtonContainer.anchorMax = new Vector2(0.5f, 0.5f);
-            _levelButtonContainer.anchoredPosition = new Vector2(0, 20f);
-            _levelButtonContainer.sizeDelta = new Vector2(550f, 450f);
+            _levelButtonContainer.anchoredPosition = new Vector2(0, -60f);
+            _levelButtonContainer.sizeDelta = new Vector2(600f, 400f);
 
             _nextLevelButton = CreateStyledButton(panel.transform, "➡️ ДАЛЕЕ", new Vector2(0, -200), true, SuccessColor);
             _nextLevelButton.gameObject.SetActive(false);
@@ -152,20 +155,36 @@ namespace RailSim.Gameplay
             _settingsPanel = settingsGo.AddComponent<RectTransform>();
             _settingsPanel.anchorMin = new Vector2(0.5f, 0.5f);
             _settingsPanel.anchorMax = new Vector2(0.5f, 0.5f);
-            _settingsPanel.sizeDelta = new Vector2(650f, 500f);
+            _settingsPanel.sizeDelta = new Vector2(800f, 900f);
             _settingsPanel.anchoredPosition = Vector2.zero;
             
             var bg = settingsGo.AddComponent<Image>();
-            bg.color = new Color(0.1f, 0.1f, 0.15f, 0.98f);
+            bg.color = PanelColor;
+            
+            // Accent line at top (like main menu)
+            var accentLine = new GameObject("AccentLine");
+            accentLine.transform.SetParent(_settingsPanel, false);
+            var accentRect = accentLine.AddComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0f, 1f);
+            accentRect.anchorMax = new Vector2(1f, 1f);
+            accentRect.sizeDelta = new Vector2(0f, 6f);
+            accentRect.anchoredPosition = Vector2.zero;
+            var accentImage = accentLine.AddComponent<Image>();
+            accentImage.color = AccentColor;
+            
+            // Settings icon
+            var iconText = CreateText(_settingsPanel, "SettingsIcon", 72, new Vector2(0, 380), TextAnchor.MiddleCenter);
+            iconText.text = "⚙️";
             
             // Title
-            var title = CreateText(_settingsPanel, "SettingsTitle", 36, new Vector2(0, 200), TextAnchor.MiddleCenter);
-            title.text = "⚙️ НАСТРОЙКИ";
+            var title = CreateText(_settingsPanel, "SettingsTitle", 48, new Vector2(0, 300), TextAnchor.MiddleCenter);
+            title.text = "НАСТРОЙКИ";
             title.color = AccentColor;
+            title.fontStyle = FontStyle.Bold;
             
             // Theme label
-            var themeLabel = CreateText(_settingsPanel, "ThemeLabel", 28, new Vector2(0, 130), TextAnchor.MiddleCenter);
-            themeLabel.text = "Тема фона:";
+            var themeLabel = CreateText(_settingsPanel, "ThemeLabel", 26, new Vector2(0, 220), TextAnchor.MiddleCenter);
+            themeLabel.text = "Выберите тему фона:";
             themeLabel.color = SubtextColor;
             
             // Theme buttons
@@ -173,14 +192,15 @@ namespace RailSim.Gameplay
             for (var i = 0; i < themeNames.Length; i++)
             {
                 var themeIndex = i;
-                var btn = CreateStyledButton(_settingsPanel, themeNames[i], new Vector2(0, 60 - i * 70), false);
-                btn.GetComponent<RectTransform>().sizeDelta = new Vector2(400f, 60f);
+                var btn = CreateStyledButton(_settingsPanel, themeNames[i], new Vector2(0, 140 - i * 80), false);
+                btn.GetComponent<RectTransform>().sizeDelta = new Vector2(500f, 70f);
                 btn.onClick.AddListener(() => SelectTheme(themeIndex));
                 _themeButtons.Add(btn);
             }
             
             // Back button
-            var backBtn = CreateStyledButton(_settingsPanel, "← НАЗАД", new Vector2(0, -180), true);
+            var backBtn = CreateStyledButton(_settingsPanel, "← НАЗАД", new Vector2(0, -280), true);
+            backBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(400f, 80f);
             backBtn.onClick.AddListener(HideSettings);
             
             _settingsPanel.gameObject.SetActive(false);
@@ -262,16 +282,22 @@ namespace RailSim.Gameplay
             }
 
             _levelButtonContainer.gameObject.SetActive(true);
-            var spacing = 110f;
+            var spacing = 100f;
             for (var i = 0; i < _levelDefinitions.Length; i++)
             {
                 var entry = _levelDefinitions[i];
                 var stars = LevelProgress.GetStars(entry.levelIndex);
-                var starDisplay = stars > 0 ? new string('⭐', stars) : "";
-                var icon = stars > 0 ? "" : (i == 0 ? "📖 " : "🗺️ ");
-                var label = stars > 0 
-                    ? $"{starDisplay} {entry.displayName.ToUpperInvariant()}"
-                    : $"{icon}{entry.displayName.ToUpperInvariant()}";
+                
+                // Show 3 stars - earned ones gold, unearned gray
+                var starDisplay = "";
+                for (var s = 0; s < 3; s++)
+                {
+                    starDisplay += s < stars ? "⭐" : "☆";
+                }
+                
+                var icon = stars == 0 ? (i == 0 ? "📖 " : "🗺️ ") : "";
+                var label = $"{starDisplay} {icon}{entry.displayName.ToUpperInvariant()}";
+                
                 var button = CreateStyledButton(_levelButtonContainer, label, 
                     new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -i * spacing), false,
                     stars >= 3 ? CompletedColor : (stars > 0 ? new Color(0.7f, 0.6f, 0.2f, 1f) : null));

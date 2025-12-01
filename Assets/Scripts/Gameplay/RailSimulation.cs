@@ -209,35 +209,6 @@ namespace RailSim.Gameplay
                     break;
                 }
 
-                // Check for wrong switch entry
-                if (_switches.TryGetValue(train.CurrentNode.Id, out var switchState))
-                {
-                    // The switch defines where to go NEXT, not where you can come FROM
-                    // A train entering from a "wrong" branch should derail if there's more than 2 neighbors
-                    // This simulates a real switch where you can only enter from the "heel" (main line)
-                    if (train.CurrentNode.Neighbors.Count > 2)
-                    {
-                        var currentTarget = switchState.CurrentTarget;
-                        // If the train came from a branch that is NOT the current target,
-                        // and there are multiple possible exits, it's a derailment
-                        if (!string.IsNullOrEmpty(currentTarget) && 
-                            cameFromNode != null &&
-                            cameFromNode.Id != currentTarget &&
-                            !IsMainLineEntry(train.CurrentNode, cameFromNode))
-                        {
-                            // Check if the entry direction conflicts with switch position
-                            var targetNode = _graph.GetNode(currentTarget);
-                            if (targetNode != null && targetNode != cameFromNode)
-                            {
-                                // The switch is pointing somewhere else, and we entered from a branch
-                                train.MarkFinished();
-                                WrongSwitchEntry?.Invoke(train, train.CurrentNode);
-                                break;
-                            }
-                        }
-                    }
-                }
-
                 var nextNode = ResolveNextNode(train);
                 if (nextNode == null)
                 {
@@ -264,17 +235,6 @@ namespace RailSim.Gameplay
 
                 train.BeginEdge(nextNode, edge);
             }
-        }
-
-        /// <summary>
-        /// Determines if the entry node is a "main line" entry (typically has only 2 connections at that junction).
-        /// This is a simplified check - in a real scenario, you might want to configure this per switch.
-        /// </summary>
-        private static bool IsMainLineEntry(RailNode switchNode, RailNode entryNode)
-        {
-            // Count how many neighbors the entry node has
-            // If it's a simple through-line node, it's likely the main line
-            return entryNode.Neighbors.Count <= 2;
         }
 
         private RailNode ResolveNextNode(TrainRuntime train)
@@ -327,62 +287,92 @@ namespace RailSim.Gameplay
             return null;
         }
 
+        /// <summary>
+        /// Detects collisions between trains.
+        /// A collision occurs ONLY when two different active trains physically overlap.
+        /// </summary>
         private void DetectCollisions()
         {
-            for (var i = 0; i < _trains.Count; i++)
+            // Get list of active (not finished) trains
+            var activeTrains = new List<TrainRuntime>();
+            foreach (var train in _trains)
             {
-                var a = _trains[i];
-                if (a.HasFinished)
+                if (!train.HasFinished)
                 {
-                    continue;
+                    activeTrains.Add(train);
                 }
-
-                for (var j = i + 1; j < _trains.Count; j++)
+            }
+            
+            // Need at least 2 active trains for any collision to be possible
+            if (activeTrains.Count < 2)
+            {
+                return;
+            }
+            
+            // Check each unique pair of active trains
+            for (var i = 0; i < activeTrains.Count - 1; i++)
+            {
+                var trainA = activeTrains[i];
+                
+                for (var j = i + 1; j < activeTrains.Count; j++)
                 {
-                    var b = _trains[j];
-                    if (b.HasFinished)
+                    var trainB = activeTrains[j];
+                    
+                    if (CheckTrainCollision(trainA, trainB))
                     {
-                        continue;
-                    }
-
-                    if (IsCollision(a, b))
-                    {
-                        CollisionDetected?.Invoke(a, b);
+                        CollisionDetected?.Invoke(trainA, trainB);
                         return;
                     }
                 }
             }
         }
 
-        private static bool IsCollision(TrainRuntime a, TrainRuntime b)
+        /// <summary>
+        /// Checks if two trains are colliding (physically overlapping).
+        /// </summary>
+        private static bool CheckTrainCollision(TrainRuntime trainA, TrainRuntime trainB)
         {
-            // Check if trains are on different elevation levels
-            var elevationA = a.CurrentEdge?.Elevation ?? 0;
-            var elevationB = b.CurrentEdge?.Elevation ?? 0;
+            // Ensure we have two different, valid trains
+            if (trainA == null || trainB == null)
+            {
+                return false;
+            }
+            
+            // Same object reference - not a collision
+            if (ReferenceEquals(trainA, trainB))
+            {
+                return false;
+            }
+            
+            // Same train ID - not a collision (same train can't collide with itself)
+            if (string.Equals(trainA.Blueprint.id, trainB.Blueprint.id, System.StringComparison.Ordinal))
+            {
+                return false;
+            }
+            
+            // Check elevation - trains on different levels can't collide
+            var elevationA = trainA.CurrentEdge?.Elevation ?? 0;
+            var elevationB = trainB.CurrentEdge?.Elevation ?? 0;
             if (elevationA != elevationB)
             {
-                return false; // Different elevations = no collision
+                return false;
             }
-
-            // Check same edge collision
-            if (a.CurrentEdge != null && a.CurrentEdge == b.CurrentEdge)
-            {
-                return Mathf.Abs(a.DistanceAlongEdge - b.DistanceAlongEdge) < 0.3f;
-            }
-
-            // Check same node collision
-            if (a.CurrentNode != null && a.CurrentNode == b.CurrentNode)
-            {
-                return true;
-            }
-
-            // Check position-based collision using world positions
-            var posA = a.GetWorldPosition();
-            var posB = b.GetWorldPosition();
-            var distance = Vector3.Distance(posA, posB);
             
-            const float collisionRadius = 0.5f;
-            return distance < collisionRadius;
+            // Get world positions of both trains
+            var positionA = trainA.GetWorldPosition();
+            var positionB = trainB.GetWorldPosition();
+            
+            // Calculate 2D distance (ignore Z for top-down view)
+            var deltaX = positionA.x - positionB.x;
+            var deltaY = positionA.y - positionB.y;
+            var distanceSquared = deltaX * deltaX + deltaY * deltaY;
+            
+            // Collision radius - trains are about 1 unit long, 0.4 units wide
+            // Two trains collide when their centers are closer than this
+            const float collisionThreshold = 0.3f;
+            const float collisionThresholdSquared = collisionThreshold * collisionThreshold;
+            
+            return distanceSquared < collisionThresholdSquared;
         }
     }
 

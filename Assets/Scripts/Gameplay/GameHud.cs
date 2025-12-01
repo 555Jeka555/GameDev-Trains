@@ -15,11 +15,25 @@ namespace RailSim.Gameplay
         private System.Action _menuCallback;
         private Sprite _arrowSprite;
         private Image _timerBackground;
+        
+        // Star progress bar
+        private RectTransform _progressBarContainer;
+        private Image _progressBarFill;
+        private Text _progressText;
+        private float _threeStarTime;
+        private float _twoStarTime;
+        private float _currentTime;
+        private bool _isPlanningPhase;
 
         // Color scheme matching menu
         private static readonly Color AccentColor = new(0.95f, 0.6f, 0.1f, 1f);
         private static readonly Color PanelColor = new(0.08f, 0.08f, 0.12f, 0.9f);
         private static readonly Color TextColor = new(0.95f, 0.95f, 0.9f, 1f);
+        private static readonly Color StarGold = new(1f, 0.85f, 0.2f, 1f);
+        private static readonly Color StarGray = new(0.4f, 0.4f, 0.45f, 1f);
+        private static readonly Color ProgressGreen = new(0.3f, 0.85f, 0.4f, 1f);
+        private static readonly Color ProgressYellow = new(0.95f, 0.8f, 0.2f, 1f);
+        private static readonly Color ProgressRed = new(0.9f, 0.3f, 0.25f, 1f);
 
         public static GameHud Create(Camera targetCamera)
         {
@@ -42,13 +56,16 @@ namespace RailSim.Gameplay
 
         private void BuildUI()
         {
-            // Timer with background panel
+            // Timer with background panel - moved lower (below notch area)
             var timerPanel = CreatePanel("TimerPanel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), 
-                new Vector2(0, -60f), new Vector2(320f, 70f));
+                new Vector2(0, -150f), new Vector2(360f, 80f));
             _timerBackground = timerPanel.GetComponent<Image>();
             
-            _timerText = CreateText("TimerText", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -60f), 36);
+            _timerText = CreateText("TimerText", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -150f), 38);
             _timerText.fontStyle = FontStyle.Bold;
+            
+            // Star progress bar - below timer
+            BuildProgressBar();
             
             // Status text with shadow effect
             _statusText = CreateText("StatusText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 48);
@@ -59,11 +76,55 @@ namespace RailSim.Gameplay
             shadow.effectColor = new Color(0f, 0f, 0f, 0.7f);
             shadow.effectDistance = new Vector2(3f, -3f);
 
+            // Menu button moved lower
             _menuButton = CreateStyledButton("MenuButton", new Vector2(0f, 1f), new Vector2(0f, 1f), 
-                new Vector2(100f, -60f), new Vector2(160f, 70f), "☰ МЕНЮ");
+                new Vector2(100f, -150f), new Vector2(160f, 70f), "☰ МЕНЮ");
             _menuButton.onClick.AddListener(() => _menuCallback?.Invoke());
             
             BuildFinishArrow();
+        }
+
+        private void BuildProgressBar()
+        {
+            // Container
+            var container = new GameObject("ProgressBar");
+            container.transform.SetParent(transform, false);
+            _progressBarContainer = container.AddComponent<RectTransform>();
+            _progressBarContainer.anchorMin = new Vector2(0.5f, 1f);
+            _progressBarContainer.anchorMax = new Vector2(0.5f, 1f);
+            _progressBarContainer.anchoredPosition = new Vector2(0, -240f);
+            _progressBarContainer.sizeDelta = new Vector2(400f, 50f);
+            
+            // Background
+            var bg = container.AddComponent<Image>();
+            bg.color = new Color(0.1f, 0.1f, 0.15f, 0.9f);
+            
+            // Progress fill
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(container.transform, false);
+            var fillRect = fillGo.AddComponent<RectTransform>();
+            fillRect.anchorMin = new Vector2(0f, 0f);
+            fillRect.anchorMax = new Vector2(0f, 1f);
+            fillRect.pivot = new Vector2(0f, 0.5f);
+            fillRect.anchoredPosition = new Vector2(5f, 0f);
+            fillRect.sizeDelta = new Vector2(0f, -10f);
+            _progressBarFill = fillGo.AddComponent<Image>();
+            _progressBarFill.color = ProgressGreen;
+            
+            // Progress text
+            var textGo = new GameObject("ProgressText");
+            textGo.transform.SetParent(container.transform, false);
+            var textRect = textGo.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.sizeDelta = Vector2.zero;
+            _progressText = textGo.AddComponent<Text>();
+            _progressText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _progressText.fontSize = 28;
+            _progressText.alignment = TextAnchor.MiddleRight;
+            _progressText.color = TextColor;
+            
+            _progressBarContainer.gameObject.SetActive(false);
         }
 
         private GameObject CreatePanel(string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offset, Vector2 size)
@@ -186,6 +247,51 @@ namespace RailSim.Gameplay
         private void Update()
         {
             UpdateArrow();
+            UpdateProgressBar();
+        }
+
+        private void UpdateProgressBar()
+        {
+            if (_progressBarContainer == null || _progressBarFill == null || _progressText == null) return;
+            if (!_progressBarContainer.gameObject.activeSelf || _isPlanningPhase) return;
+            
+            // Calculate current star level based on time
+            var stars = 3;
+            if (_currentTime > _threeStarTime) stars = 2;
+            if (_currentTime > _twoStarTime) stars = 1;
+            
+            // Update fill width and color
+            var maxWidth = 390f;
+            float progress;
+            Color fillColor;
+            
+            if (stars == 3)
+            {
+                progress = _threeStarTime > 0f ? 1f - (_currentTime / _threeStarTime) : 1f;
+                fillColor = ProgressGreen;
+            }
+            else if (stars == 2)
+            {
+                var range = _twoStarTime - _threeStarTime;
+                progress = range > 0f ? 1f - ((_currentTime - _threeStarTime) / range) : 0.5f;
+                fillColor = ProgressYellow;
+            }
+            else
+            {
+                progress = Mathf.Max(0.1f, 1f - ((_currentTime - _twoStarTime) / 20f));
+                fillColor = ProgressRed;
+            }
+            
+            _progressBarFill.rectTransform.sizeDelta = new Vector2(maxWidth * Mathf.Clamp01(progress), -10f);
+            _progressBarFill.color = fillColor;
+            
+            // Update stars text
+            var starsText = "";
+            for (var i = 0; i < 3; i++)
+            {
+                starsText += i < stars ? "⭐" : "☆";
+            }
+            _progressText.text = starsText;
         }
 
         private void UpdateArrow()
@@ -248,8 +354,29 @@ namespace RailSim.Gameplay
             _menuCallback = callback;
         }
 
+        public void SetStarTimes(float threeStarTime, float twoStarTime)
+        {
+            _threeStarTime = threeStarTime;
+            _twoStarTime = twoStarTime;
+            if (_progressBarContainer != null)
+            {
+                _progressBarContainer.gameObject.SetActive(true);
+            }
+        }
+
+        public void HideProgressBar()
+        {
+            if (_progressBarContainer != null)
+            {
+                _progressBarContainer.gameObject.SetActive(false);
+            }
+        }
+
         public void UpdateTimer(float seconds, bool planningPhase)
         {
+            _currentTime = seconds;
+            _isPlanningPhase = planningPhase;
+            
             var icon = planningPhase ? "⏱️" : "🚂";
             var label = planningPhase ? "ПЛАН" : "ПУТЬ";
             _timerText.text = $"{icon} {label}: {Mathf.Max(0f, seconds):0.0}с";
@@ -278,4 +405,3 @@ namespace RailSim.Gameplay
         }
     }
 }
-
