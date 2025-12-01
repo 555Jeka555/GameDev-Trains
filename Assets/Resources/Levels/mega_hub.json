@@ -1,0 +1,125 @@
+{
+  "id": "MegaHub",
+  "planningTime": 10.0,
+  "simulationSpeed": 1.1,
+  "goalNodeId": "G",
+  "nodes": [
+    { "id": "A", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
+    { "id": "A2", "gridPosition": { "x": -6, "y": -6 }, "type": "Start" },
+    { "id": "B", "gridPosition": { "x": 6, "y": -6 }, "type": "Generic" },
+    { "id": "C", "gridPosition": { "x": 12, "y": -12 }, "type": "Generic" },
+    { "id": "D", "gridPosition": { "x": 18, "y": -18 }, "type": "Generic" },
+    { "id": "E", "gridPosition": { "x": 24, "y": -24 }, "type": "Generic" },
+    { "id": "F", "gridPosition": { "x": 30, "y": -30 }, "type": "Generic" },
+    { "id": "G", "gridPosition": { "x": 36, "y": -36 }, "type": "Finish" },
+    { "id": "T1", "gridPosition": { "x": 12, "y": 0 }, "type": "Generic" },
+    { "id": "T2", "gridPosition": { "x": 18, "y": -6 }, "type": "Generic" },
+    { "id": "T3", "gridPosition": { "x": 24, "y": -12 }, "type": "Generic" },
+    { "id": "T4", "gridPosition": { "x": 30, "y": -18 }, "type": "Generic" },
+    { "id": "T5", "gridPosition": { "x": 36, "y": -24 }, "type": "Generic" },
+    { "id": "L1", "gridPosition": { "x": 0, "y": -12 }, "type": "Generic" },
+    { "id": "L2", "gridPosition": { "x": 6, "y": -18 }, "type": "Generic" },
+    { "id": "L3", "gridPosition": { "x": 12, "y": -24 }, "type": "Generic" },
+    { "id": "L4", "gridPosition": { "x": 18, "y": -30 }, "type": "Generic" },
+    { "id": "L5", "gridPosition": { "x": 24, "y": -36 }, "type": "Generic" },
+    { "id": "X1", "gridPosition": { "x": 24, "y": 0 }, "type": "Generic" },
+    { "id": "X2", "gridPosition": { "x": 36, "y": -12 }, "type": "Generic" },
+    { "id": "Y1", "gridPosition": { "x": 0, "y": -24 }, "type": "Generic" },
+    { "id": "Y2", "gridPosition": { "x": 12, "y": -36 }, "type": "Generic" },
+    { "id": "X1a", "gridPosition": { "x": 30, "y": -6 }, "type": "Generic" },
+    { "id": "X2a", "gridPosition": { "x": 42, "y": -18 }, "type": "Generic" },
+    { "id": "Y1a", "gridPosition": { "x": 6, "y": -30 }, "type": "Generic" },
+    { "id": "Y2a", "gridPosition": { "x": 18, "y": -42 }, "type": "Generic" }
+  ],
+  "edges": [
+    { "id": "A_B", "fromNodeId": "A", "toNodeId": "B", "lengthMultiplier": 1.0 },
+    { "id": "A2_L1", "fromNodeId": "A2", "toNodeId": "L1", "lengthMultiplier": 1.0 },
+    { "id": "B_C", "fromNodeId": "B", "toNodeId": "C", "lengthMultiplier": 1.0 },
+    { "id": "C_D", "fromNodeId": "C", "toNodeId": "D", "lengthMultiplier": 1.0 },
+    { "id": "D_E", "fromNodeId": "D", "toNodeId": "E", "lengthMultiplier": 1.0 },
+    { "id": "E_F", "fromNodeId": "E", "toNodeId": "F", "lengthMultiplier": 1.0 },
+    { "id": "F_G", "fromNodeId": "F", "toNodeId": "G", "lengthMultiplier": 1.0 },
+    
+    { "id": "B_T1", "fromNodeId": "B", "toNodeId": "T1", "lengthMultiplier": 1.0 },
+    { "id": "T1_T2", "fromNodeId": "T1", "toNodeId": "T2", "lengthMultiplier": 1.0 },
+    { "id": "T2_C", "fromNodeId": "T2", "toNodeId": "C", "lengthMultiplier": 1.0 },
+    
+    { "id": "C_T2b", "fromNodeId": "C", "toNodeId": "T2", "lengthMultiplier": 1.0 },
+    { "id": "T2_T3", "fromNodeId": "T2", "toNodeId": "T3", "lengthMultiplier": 1.0 },
+    { "id": "T3_D", "fromNodeId": "T3", "toNodeId": "D", "lengthMultiplier": 1.0 },
+    
+    { "id": "D_T3b", "fromNodeId": "D", "toNodeId": "T3", "lengthMultiplier": 1.0 },
+    { "id": "T3_T4", "fromNodeId": "T3", "toNodeId": "T4", "lengthMultiplier": 1.0 },
+    { "id": "T4_E", "fromNodeId": "T4", "toNodeId": "E", "lengthMultiplier": 1.0 },
+    
+    { "id": "E_T4b", "fromNodeId": "E", "toNodeId": "T4", "lengthMultiplier": 1.0 },
+    { "id": "T4_T5", "fromNodeId": "T4", "toNodeId": "T5", "lengthMultiplier": 1.0 },
+    { "id": "T5_F", "fromNodeId": "T5", "toNodeId": "F", "lengthMultiplier": 1.0 },
+    
+    { "id": "B_L1", "fromNodeId": "B", "toNodeId": "L1", "lengthMultiplier": 1.0 },
+    { "id": "L1_L2", "fromNodeId": "L1", "toNodeId": "L2", "lengthMultiplier": 1.0 },
+    { "id": "L2_C", "fromNodeId": "L2", "toNodeId": "C", "lengthMultiplier": 1.0 },
+    
+    { "id": "C_L2b", "fromNodeId": "C", "toNodeId": "L2", "lengthMultiplier": 1.0 },
+    { "id": "L2_L3", "fromNodeId": "L2", "toNodeId": "L3", "lengthMultiplier": 1.0 },
+    { "id": "L3_D", "fromNodeId": "L3", "toNodeId": "D", "lengthMultiplier": 1.0 },
+    
+    { "id": "D_L3b", "fromNodeId": "D", "toNodeId": "L3", "lengthMultiplier": 1.0 },
+    { "id": "L3_L4", "fromNodeId": "L3", "toNodeId": "L4", "lengthMultiplier": 1.0 },
+    { "id": "L4_E", "fromNodeId": "L4", "toNodeId": "E", "lengthMultiplier": 1.0 },
+    
+    { "id": "E_L4b", "fromNodeId": "E", "toNodeId": "L4", "lengthMultiplier": 1.0 },
+    { "id": "L4_L5", "fromNodeId": "L4", "toNodeId": "L5", "lengthMultiplier": 1.0 },
+    { "id": "L5_F", "fromNodeId": "L5", "toNodeId": "F", "lengthMultiplier": 1.0 },
+    
+    { "id": "T2_X1", "fromNodeId": "T2", "toNodeId": "X1", "lengthMultiplier": 1.0 },
+    { "id": "X1_X1a", "fromNodeId": "X1", "toNodeId": "X1a", "lengthMultiplier": 1.0 },
+    { "id": "X1a_T3", "fromNodeId": "X1a", "toNodeId": "T3", "lengthMultiplier": 1.0 },
+    
+    { "id": "T4_X2", "fromNodeId": "T4", "toNodeId": "X2", "lengthMultiplier": 1.0 },
+    { "id": "X2_X2a", "fromNodeId": "X2", "toNodeId": "X2a", "lengthMultiplier": 1.0 },
+    { "id": "X2a_T5", "fromNodeId": "X2a", "toNodeId": "T5", "lengthMultiplier": 1.0 },
+    
+    { "id": "L2_Y1", "fromNodeId": "L2", "toNodeId": "Y1", "lengthMultiplier": 1.0 },
+    { "id": "Y1_Y1a", "fromNodeId": "Y1", "toNodeId": "Y1a", "lengthMultiplier": 1.0 },
+    { "id": "Y1a_L3", "fromNodeId": "Y1a", "toNodeId": "L3", "lengthMultiplier": 1.0 },
+    
+    { "id": "L4_Y2", "fromNodeId": "L4", "toNodeId": "Y2", "lengthMultiplier": 1.0 },
+    { "id": "Y2_Y2a", "fromNodeId": "Y2", "toNodeId": "Y2a", "lengthMultiplier": 1.0 },
+    { "id": "Y2a_L5", "fromNodeId": "Y2a", "toNodeId": "L5", "lengthMultiplier": 1.0 }
+  ],
+  "switches": [
+    { "nodeId": "B", "neighborCycle": ["C", "T1", "L1"], "initialIndex": 0 },
+    { "nodeId": "C", "neighborCycle": ["D", "T2", "L2", "B"], "initialIndex": 0 },
+    { "nodeId": "D", "neighborCycle": ["E", "T3", "L3", "C"], "initialIndex": 0 },
+    { "nodeId": "E", "neighborCycle": ["F", "T4", "L4", "D"], "initialIndex": 0 },
+    { "nodeId": "F", "neighborCycle": ["G", "T5", "L5", "E"], "initialIndex": 0 },
+    { "nodeId": "T1", "neighborCycle": ["B", "T2"], "initialIndex": 0 },
+    { "nodeId": "T2", "neighborCycle": ["C", "T1", "T3", "X1"], "initialIndex": 0 },
+    { "nodeId": "T3", "neighborCycle": ["D", "T2", "T4", "X1a"], "initialIndex": 0 },
+    { "nodeId": "T4", "neighborCycle": ["E", "T3", "T5", "X2"], "initialIndex": 0 },
+    { "nodeId": "T5", "neighborCycle": ["F", "T4", "X2a"], "initialIndex": 0 },
+    { "nodeId": "L1", "neighborCycle": ["B", "L2", "A2"], "initialIndex": 0 },
+    { "nodeId": "L2", "neighborCycle": ["C", "L1", "L3", "Y1"], "initialIndex": 0 },
+    { "nodeId": "L3", "neighborCycle": ["D", "L2", "L4", "Y1a"], "initialIndex": 0 },
+    { "nodeId": "L4", "neighborCycle": ["E", "L3", "L5", "Y2"], "initialIndex": 0 },
+    { "nodeId": "L5", "neighborCycle": ["F", "L4", "Y2a"], "initialIndex": 0 },
+    { "nodeId": "X1", "neighborCycle": ["T2", "X1a"], "initialIndex": 0 },
+    { "nodeId": "X1a", "neighborCycle": ["X1", "T3"], "initialIndex": 0 },
+    { "nodeId": "X2", "neighborCycle": ["T4", "X2a"], "initialIndex": 0 },
+    { "nodeId": "X2a", "neighborCycle": ["X2", "T5"], "initialIndex": 0 },
+    { "nodeId": "Y1", "neighborCycle": ["L2", "Y1a"], "initialIndex": 0 },
+    { "nodeId": "Y1a", "neighborCycle": ["Y1", "L3"], "initialIndex": 0 },
+    { "nodeId": "Y2", "neighborCycle": ["L4", "Y2a"], "initialIndex": 0 },
+    { "nodeId": "Y2a", "neighborCycle": ["Y2", "L5"], "initialIndex": 0 }
+  ],
+  "trains": [
+    {
+      "id": "Express",
+      "kind": "Passenger",
+      "startNodeId": "A",
+      "initialNextNodeId": "B",
+      "metersPerSecond": 2.6
+    }
+  ]
+}

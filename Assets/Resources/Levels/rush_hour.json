@@ -1,0 +1,52 @@
+{
+  "id": "RushHour",
+  "planningTime": 6.0,
+  "simulationSpeed": 1.1,
+  "goalNodeId": "Goal",
+  "nodes": [
+    { "id": "P0", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
+    { "id": "S1", "gridPosition": { "x": 1, "y": 0 }, "type": "Generic" },
+    { "id": "S2", "gridPosition": { "x": 2, "y": 0 }, "type": "Generic" },
+    { "id": "Goal", "gridPosition": { "x": 4, "y": 0 }, "type": "Finish" },
+    { "id": "Loop1", "gridPosition": { "x": 1, "y": -1 }, "type": "Generic" },
+    { "id": "Loop2", "gridPosition": { "x": 2, "y": -1 }, "type": "Generic" },
+    { "id": "Bypass", "gridPosition": { "x": 3, "y": 1 }, "type": "Generic" },
+    { "id": "F0", "gridPosition": { "x": 0, "y": 1 }, "type": "Start" },
+    { "id": "F1", "gridPosition": { "x": 1, "y": 1 }, "type": "Generic" }
+  ],
+  "edges": [
+    { "id": "P0_S1", "fromNodeId": "P0", "toNodeId": "S1", "lengthMultiplier": 1.0 },
+    { "id": "S1_S2", "fromNodeId": "S1", "toNodeId": "S2", "lengthMultiplier": 1.0 },
+    { "id": "S2_Goal", "fromNodeId": "S2", "toNodeId": "Goal", "lengthMultiplier": 1.0 },
+    { "id": "S1_Loop1", "fromNodeId": "S1", "toNodeId": "Loop1", "lengthMultiplier": 1.0 },
+    { "id": "Loop1_Loop2", "fromNodeId": "Loop1", "toNodeId": "Loop2", "lengthMultiplier": 1.0 },
+    { "id": "Loop2_S2", "fromNodeId": "Loop2", "toNodeId": "S2", "lengthMultiplier": 1.0 },
+    { "id": "S2_Bypass", "fromNodeId": "S2", "toNodeId": "Bypass", "lengthMultiplier": 1.0 },
+    { "id": "Bypass_Goal", "fromNodeId": "Bypass", "toNodeId": "Goal", "lengthMultiplier": 1.0 },
+    { "id": "F0_F1", "fromNodeId": "F0", "toNodeId": "F1", "lengthMultiplier": 1.0 },
+    { "id": "F1_S2", "fromNodeId": "F1", "toNodeId": "S2", "lengthMultiplier": 1.0 },
+    { "id": "F1_Bypass", "fromNodeId": "F1", "toNodeId": "Bypass", "lengthMultiplier": 1.0 }
+  ],
+  "switches": [
+    { "nodeId": "S1", "neighborCycle": ["S2", "Loop1"], "initialIndex": 0 },
+    { "nodeId": "S2", "neighborCycle": ["Goal", "Loop2", "Bypass"], "initialIndex": 0 },
+    { "nodeId": "F1", "neighborCycle": ["S2", "Bypass"], "initialIndex": 0 }
+  ],
+  "trains": [
+    {
+      "id": "Express",
+      "kind": "Passenger",
+      "startNodeId": "P0",
+      "initialNextNodeId": "S1",
+      "metersPerSecond": 2.4
+    },
+    {
+      "id": "Freight",
+      "kind": "Freight",
+      "startNodeId": "F0",
+      "initialNextNodeId": "F1",
+      "metersPerSecond": 1.8
+    }
+  ]
+}
+

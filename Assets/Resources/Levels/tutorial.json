@@ -1,0 +1,37 @@
+{
+  "id": "Tutorial01",
+  "planningTime": 10.0,
+  "simulationSpeed": 1.0,
+  "goalNodeId": "D",
+  "nodes": [
+    { "id": "A", "gridPosition": { "x": 0, "y": 0 }, "type": "Start" },
+    { "id": "B", "gridPosition": { "x": 1, "y": 0 }, "type": "Generic" },
+    { "id": "C", "gridPosition": { "x": 2, "y": 0 }, "type": "Generic" },
+    { "id": "D", "gridPosition": { "x": 3, "y": 0 }, "type": "Finish" },
+    { "id": "E", "gridPosition": { "x": 1, "y": -1 }, "type": "Generic" },
+    { "id": "F", "gridPosition": { "x": 2, "y": 1 }, "type": "Generic" }
+  ],
+  "edges": [
+    { "id": "AB", "fromNodeId": "A", "toNodeId": "B", "lengthMultiplier": 1.0 },
+    { "id": "BC", "fromNodeId": "B", "toNodeId": "C", "lengthMultiplier": 1.0 },
+    { "id": "CD", "fromNodeId": "C", "toNodeId": "D", "lengthMultiplier": 1.0 },
+    { "id": "BE", "fromNodeId": "B", "toNodeId": "E", "lengthMultiplier": 1.0 },
+    { "id": "EC", "fromNodeId": "E", "toNodeId": "C", "lengthMultiplier": 1.0 },
+    { "id": "CF", "fromNodeId": "C", "toNodeId": "F", "lengthMultiplier": 1.0 },
+    { "id": "FD", "fromNodeId": "F", "toNodeId": "D", "lengthMultiplier": 1.0 }
+  ],
+  "switches": [
+    { "nodeId": "B", "neighborCycle": ["C", "E"], "initialIndex": 0 },
+    { "nodeId": "C", "neighborCycle": ["D", "F"], "initialIndex": 0 }
+  ],
+  "trains": [
+    {
+      "id": "Passenger",
+      "kind": "Passenger",
+      "startNodeId": "A",
+      "initialNextNodeId": "B",
+      "metersPerSecond": 2.0
+    }
+  ]
+}
+
